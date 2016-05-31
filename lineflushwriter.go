@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+// Writer implements writer, that will proxy to specified `backend` writer only
+// complete lines, e.g. that ends in newline. This writer is thread-safe.
 type Writer struct {
 	mutex   *sync.Mutex
 	backend io.WriteCloser
@@ -18,6 +20,9 @@ type Writer struct {
 	ensureNewline bool
 }
 
+// New returns new Writer, that will proxy data to the `backend` writer,
+// thread-safety is guaranteed via `lock`. Optionally, writer can ensure, that
+// last line of output ends with newline, if `ensureNewline` is true.
 func New(
 	writer io.WriteCloser,
 	lock *sync.Mutex,
@@ -32,6 +37,9 @@ func New(
 	}
 }
 
+// Writer writes data into Writer.
+//
+// Signature matches with io.Writer's Write().
 func (writer *Writer) Write(data []byte) (int, error) {
 	writer.mutex.Lock()
 	written, err := writer.buffer.Write(data)
@@ -77,6 +85,11 @@ func (writer *Writer) Write(data []byte) (int, error) {
 	return written, nil
 }
 
+// Close flushes all remaining data and closes underlying backend writer.
+// If `ensureNewLine` was specified and remaining data does not ends with
+// newline, then newline will be added.
+//
+// Signature matches with io.WriteCloser's Close().
 func (writer *Writer) Close() error {
 	if writer.ensureNewline && writer.buffer.Len() > 0 {
 		if !strings.HasSuffix(writer.buffer.String(), "\n") {
