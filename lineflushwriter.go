@@ -15,8 +15,6 @@ type Writer struct {
 	backend io.WriteCloser
 	buffer  *bytes.Buffer
 
-	newline rune
-
 	ensureNewline bool
 }
 
@@ -62,9 +60,9 @@ func (writer *Writer) Write(data []byte) (int, error) {
 			if err != io.EOF {
 				writer.mutex.Unlock()
 				return 0, err
-			} else {
-				eofEncountered = true
 			}
+
+			eofEncountered = true
 		}
 
 		var target io.Writer
@@ -74,11 +72,11 @@ func (writer *Writer) Write(data []byte) (int, error) {
 			target = writer.backend
 		}
 
-		written, err := io.WriteString(target, line)
+		_, err = io.WriteString(target, line)
 
 		writer.mutex.Unlock()
 		if err != nil {
-			return written, err
+			return 0, err
 		}
 	}
 

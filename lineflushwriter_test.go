@@ -59,33 +59,31 @@ func TestWriter_BufferizeLineUntilComplete(t *testing.T) {
 }
 
 func TestWriter_FlushesBufferOnClose(t *testing.T) {
-	test := assert.New(t)
-
 	writer := testWriter(t, nil, false, "123", "")
-	writer.Close()
-
-	buffer := writer.(*Writer).backend.(nopCloser).Buffer
-	test.Equal("123", buffer.String())
+	testWriterClose(t, writer, "123")
 }
 
 func TestWriter_CanEnsureNewlineAtEndOfTheStringOnClose(t *testing.T) {
-	test := assert.New(t)
-
 	writer := testWriter(t, nil, true, "123", "")
-	writer.Close()
-
-	buffer := writer.(*Writer).backend.(nopCloser).Buffer
-	test.Equal("123\n", buffer.String())
+	testWriterClose(t, writer, "123\n")
 }
 
 func TestWriter_NotAppendsNewlinesTwiceOnClose(t *testing.T) {
+	writer := testWriter(t, nil, true, "123\n", "123\n")
+	testWriterClose(t, writer, "123\n")
+}
+
+func testWriterClose(
+	t *testing.T,
+	writer io.WriteCloser,
+	expected string,
+) {
 	test := assert.New(t)
 
-	writer := testWriter(t, nil, true, "123\n", "123\n")
 	writer.Close()
 
 	buffer := writer.(*Writer).backend.(nopCloser).Buffer
-	test.Equal("123\n", buffer.String())
+	test.Equal(expected, buffer.String())
 }
 
 func testWriter(
