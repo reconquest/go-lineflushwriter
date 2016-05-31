@@ -22,8 +22,8 @@ Writer  Can Ensure Newline At End Of The String On Close
 Writer  Not Appends Newlines Twice On Close
 ```
 
-Generated with [loverage](https://github.com/kovetskiy/loverage)
+Generated with [loverage](https://github.com/kovetskiy/loverage).
 
 # Reference
 
-See reference at [godoc.org](https://godoc.org/github.com/reconquest/go-lineflushwriter)
+See reference at [godoc.org](https://godoc.org/github.com/reconquest/go-lineflushwriter).
