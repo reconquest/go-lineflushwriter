@@ -11,7 +11,7 @@ import (
 // Writer implements writer, that will proxy to specified `backend` writer only
 // complete lines, e.g. that ends in newline. This writer is thread-safe.
 type Writer struct {
-	mutex   *sync.Mutex
+	lock    sync.Locker
 	backend io.WriteCloser
 	buffer  *bytes.Buffer
 
@@ -23,12 +23,12 @@ type Writer struct {
 // last line of output ends with newline, if `ensureNewline` is true.
 func New(
 	writer io.WriteCloser,
-	lock *sync.Mutex,
+	lock sync.Locker,
 	ensureNewline bool,
 ) *Writer {
 	return &Writer{
 		backend: writer,
-		mutex:   lock,
+		lock:    lock,
 		buffer:  &bytes.Buffer{},
 
 		ensureNewline: ensureNewline,
@@ -39,9 +39,9 @@ func New(
 //
 // Signature matches with io.Writer's Write().
 func (writer *Writer) Write(data []byte) (int, error) {
-	writer.mutex.Lock()
+	writer.lock.Lock()
 	written, err := writer.buffer.Write(data)
-	writer.mutex.Unlock()
+	writer.lock.Unlock()
 	if err != nil {
 		return written, err
 	}
@@ -53,12 +53,12 @@ func (writer *Writer) Write(data []byte) (int, error) {
 	)
 
 	for !eofEncountered {
-		writer.mutex.Lock()
+		writer.lock.Lock()
 		line, err := reader.ReadString('\n')
 
 		if err != nil {
 			if err != io.EOF {
-				writer.mutex.Unlock()
+				writer.lock.Unlock()
 				return 0, err
 			}
 
@@ -74,7 +74,7 @@ func (writer *Writer) Write(data []byte) (int, error) {
 
 		_, err = io.WriteString(target, line)
 
-		writer.mutex.Unlock()
+		writer.lock.Unlock()
 		if err != nil {
 			return 0, err
 		}

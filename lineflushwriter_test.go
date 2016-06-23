@@ -23,7 +23,7 @@ func TestNew_ReturnsWriterWithSpecifiedValues(t *testing.T) {
 	mutex := &sync.Mutex{}
 	writer := New(nil, mutex, true)
 
-	test.Equal(mutex, writer.mutex)
+	test.Equal(mutex, writer.lock)
 	test.Equal(true, writer.ensureNewline)
 }
 
