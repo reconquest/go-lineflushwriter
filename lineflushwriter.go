@@ -98,9 +98,11 @@ func (writer *Writer) Close() error {
 		}
 	}
 
-	_, err := writer.backend.Write(writer.buffer.Bytes())
-	if err != nil {
-		return err
+	if writer.buffer.Len() > 0 {
+		_, err := writer.backend.Write(writer.buffer.Bytes())
+		if err != nil {
+			return err
+		}
 	}
 
 	return writer.backend.Close()
