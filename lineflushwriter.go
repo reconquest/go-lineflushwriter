@@ -1,10 +1,8 @@
 package lineflushwriter
 
 import (
-	"bufio"
 	"bytes"
 	"io"
-	"strings"
 	"sync"
 )
 
@@ -13,7 +11,7 @@ import (
 type Writer struct {
 	lock    sync.Locker
 	backend io.WriteCloser
-	buffer  *bytes.Buffer
+	buffer  []byte
 
 	ensureNewline bool
 }
@@ -29,7 +27,6 @@ func New(
 	return &Writer{
 		backend: writer,
 		lock:    lock,
-		buffer:  &bytes.Buffer{},
 
 		ensureNewline: ensureNewline,
 	}
@@ -40,47 +37,22 @@ func New(
 // Signature matches with io.Writer's Write().
 func (writer *Writer) Write(data []byte) (int, error) {
 	writer.lock.Lock()
-	written, err := writer.buffer.Write(data)
+	writer.buffer = append(writer.buffer, data...)
+
+	var last = bytes.LastIndexByte(writer.buffer, '\n') + 1
+
+	if last > 0 {
+		written, err := writer.backend.Write(writer.buffer[:last])
+		if err != nil {
+			return written, err
+		}
+
+		writer.buffer = writer.buffer[last:]
+	}
+
 	writer.lock.Unlock()
-	if err != nil {
-		return written, err
-	}
 
-	var (
-		reader = bufio.NewReader(writer.buffer)
-
-		eofEncountered = false
-	)
-
-	for !eofEncountered {
-		writer.lock.Lock()
-		line, err := reader.ReadString('\n')
-
-		if err != nil {
-			if err != io.EOF {
-				writer.lock.Unlock()
-				return 0, err
-			}
-
-			eofEncountered = true
-		}
-
-		var target io.Writer
-		if eofEncountered {
-			target = writer.buffer
-		} else {
-			target = writer.backend
-		}
-
-		_, err = io.WriteString(target, line)
-
-		writer.lock.Unlock()
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	return written, nil
+	return len(data), nil
 }
 
 // Close flushes all remaining data and closes underlying backend writer.
@@ -89,17 +61,14 @@ func (writer *Writer) Write(data []byte) (int, error) {
 //
 // Signature matches with io.WriteCloser's Close().
 func (writer *Writer) Close() error {
-	if writer.ensureNewline && writer.buffer.Len() > 0 {
-		if !strings.HasSuffix(writer.buffer.String(), "\n") {
-			_, err := writer.buffer.WriteString("\n")
-			if err != nil {
-				return err
-			}
+	if writer.ensureNewline && len(writer.buffer) > 0 {
+		if writer.buffer[len(writer.buffer)-1] != '\n' {
+			writer.buffer = append(writer.buffer, '\n')
 		}
 	}
 
-	if writer.buffer.Len() > 0 {
-		_, err := writer.backend.Write(writer.buffer.Bytes())
+	if len(writer.buffer) > 0 {
+		_, err := writer.backend.Write(writer.buffer)
 		if err != nil {
 			return err
 		}

@@ -3,20 +3,20 @@ package lineflushwriter
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"sync"
 	"testing"
-	"time"
 )
 
 func BenchmarkWriter_Write_Parallel(b *testing.B) {
+	data := []byte("partial\nwrite")
+
 	buffer := &bytes.Buffer{}
 	writer := New(nopCloser{buffer}, &sync.Mutex{}, true)
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			fmt.Fprint(writer, time.Now().UnixNano())
+			writer.Write(data)
 		}
 	})
 }

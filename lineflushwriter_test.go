@@ -17,6 +17,23 @@ func (closer nopCloser) Close() error {
 	return nil
 }
 
+type writeCounter struct {
+	count int
+}
+
+func (counter *writeCounter) Write(data []byte) (int, error) {
+	counter.count++
+	return len(data), nil
+}
+
+func (counter *writeCounter) Close() error {
+	return nil
+}
+
+func (counter *writeCounter) Count() int {
+	return counter.count
+}
+
 func TestNew_ReturnsWriterWithSpecifiedValues(t *testing.T) {
 	test := assert.New(t)
 
@@ -29,6 +46,10 @@ func TestNew_ReturnsWriterWithSpecifiedValues(t *testing.T) {
 
 func TestWriter_WritesNothingAtEmptyData(t *testing.T) {
 	testWriter(t, nil, false, "", "")
+}
+
+func TestWriter_WritesSingleNewLine(t *testing.T) {
+	testWriter(t, nil, false, "\n", "\n")
 }
 
 func TestWriter_WritesNothingIfLineIsNotComplete(t *testing.T) {
@@ -63,6 +84,11 @@ func TestWriter_FlushesBufferOnClose(t *testing.T) {
 	testWriterClose(t, writer, "123")
 }
 
+func TestWriter_DoNotAppendNewLineIfNothingWritten(t *testing.T) {
+	writer := testWriter(t, nil, true, "", "")
+	testWriterClose(t, writer, "")
+}
+
 func TestWriter_CanEnsureNewlineAtEndOfTheStringOnClose(t *testing.T) {
 	writer := testWriter(t, nil, true, "123", "")
 	testWriterClose(t, writer, "123\n")
@@ -71,6 +97,14 @@ func TestWriter_CanEnsureNewlineAtEndOfTheStringOnClose(t *testing.T) {
 func TestWriter_NotAppendsNewlinesTwiceOnClose(t *testing.T) {
 	writer := testWriter(t, nil, true, "123\n", "123\n")
 	testWriterClose(t, writer, "123\n")
+}
+
+func TestWriter_CallBackendWriteOnlyOncePerOriginalCall(t *testing.T) {
+	counter := &writeCounter{}
+
+	writer := New(counter, &sync.Mutex{}, true)
+	writer.Write([]byte("1\n2\n3\n"))
+	assert.Equal(t, 1, counter.count)
 }
 
 func testWriterClose(
