@@ -38,6 +38,7 @@ func New(
 func (writer *Writer) Write(data []byte) (int, error) {
 	writer.lock.Lock()
 	writer.buffer = append(writer.buffer, data...)
+	defer writer.lock.Unlock()
 
 	var last = bytes.LastIndexByte(writer.buffer, '\n') + 1
 
@@ -49,8 +50,6 @@ func (writer *Writer) Write(data []byte) (int, error) {
 
 		writer.buffer = writer.buffer[last:]
 	}
-
-	writer.lock.Unlock()
 
 	return len(data), nil
 }
